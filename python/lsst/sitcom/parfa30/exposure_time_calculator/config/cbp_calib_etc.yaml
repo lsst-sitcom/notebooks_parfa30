@@ -1,0 +1,29 @@
+light_source: 'laser'
+calib_type: 'CBP'
+snr: 300
+laser_power_file: 'PGD151_NT242.txt'  #should measure actual output
+laser_decrease_expected: 0 #put something in for this
+sphere_diameter: 6  
+use_fiber: True  
+fiber_length: 8  
+fiber_coupling: 0.5  #This is probably a bit high. Should make a measurement
+fiber_type: 'WFNS' 
+exit_port_diameter: 2.5  #inches
+port_diameters: [2.5, 1, 1]  #inches; includes exit port
+sphere_reflectance: 0.985
+distance_to_mask: 3  # inches 
+pinhole_size: .00015 #This can be changed out
+f_num_cbp: 2.63  
+f_cbp: 0.635  
+cbp_transmission: 0.5  #Not sure where this comes from
+f_lsst: 10.3  
+pixel_size: .000010 
+m1: 'Al-Ag' 
+m2: 'Al-Ag'  
+m3: 'Al-Ag' 
+detector_file: 'detector_e2vPrototype.dat' 
+total_number_of_pixels: 3200000000
+cam_readout: 2  
+min_exptime: 15  
+electrometer_readout: 0 #How to deal with this? This will matter for CBP measurements for sure
+spectrograph_readout: 0

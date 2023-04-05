@@ -1,0 +1,24 @@
+light_source: 'LED'
+calib_type: 'Flatfield'
+LEDS: {'u': ['M375L4'], 'g': ['M455L4','M505L4'],'r':['M565L3','M660L4'],'i':['M730L5','M780LP1'],'z':['M850L3','M940L3',],'y4':['M970L4']}
+dichroic_files: {'u':None,'i':'curv_69904.csv','g':'DMLP490.csv','r':'DMLP605.csv','z':'DMLP900.csv','y4':None}
+coating_type: {'u':'A','g':'A','r':'A','i':'B','z':'B','y4':'B'}
+
+snr: 1000
+use_fiber: False 
+f_lsst: 10.3  
+pixel_size: .000010 
+m1: 'Al-Ideal' #Run for both configurations
+m2: 'Al-Ideal'  
+m3: 'Al-Ideal' 
+detector_file: 'detector_e2vPrototype.dat' 
+total_number_of_pixels: 3200000000
+cam_readout: 2  #Double check this
+min_exptime: 15  
+electrometer_readout: 0 #How to deal with this? This will matter for CBP measurements for sure
+spectrograph_readout: 0
+projector_mask_efficiency: 0.5 #Percentage of light from LED getting into the projector
+projector_design: ['collimator','converging_uncoated','mirror_ag_p01','mirror_ag_p01','mirror_ag_p01']
+system_efficiency: 0.496  #from zemax?
+reflector_reflectance: 0.804  
+telescope_acceptance_ratio: 0.0001 #get this from zemax

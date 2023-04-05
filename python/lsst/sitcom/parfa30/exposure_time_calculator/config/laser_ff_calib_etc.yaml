@@ -1,0 +1,25 @@
+light_source: 'laser'
+calib_type: 'Flatfield'
+snr: 100
+laser_power_file: 'PGD151_NT242.txt'  #should measure actual output
+laser_decrease_expected: 0 #put something in for this 
+use_fiber: True  
+fiber_length: 15  
+fiber_coupling: 0.5  
+fiber_type: 'WFNS' 
+f_lsst: 10.3  
+pixel_size: .000010 
+m1: 'Al-Ag' #Run for both configurations
+m2: 'Al-Ag'  
+m3: 'Al-Ag' 
+detector_file: 'detector_e2vPrototype.dat' 
+total_number_of_pixels: 3200000000
+cam_readout: 2  #Double check this
+min_exptime: 15  
+electrometer_readout: 0 #How to deal with this? This will matter for CBP measurements for sure
+spectrograph_readout: 0
+projector_mask_efficiency: 0.5 #Percentage of light from LED getting into the projector
+projector_design: ['collimator','converging_ab']
+system_efficiency: 0.496  #from zemax?
+reflector_reflectance: 0.804  
+telescope_acceptance_ratio: 0.0001 #get this from zemax
