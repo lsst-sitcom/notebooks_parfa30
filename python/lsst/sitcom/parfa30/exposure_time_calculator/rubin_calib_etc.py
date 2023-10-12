@@ -30,8 +30,7 @@ class RubinCalibETC(object):
                                         'labsphere_inner_ring_reflectance.csv']
 
         #Telescope&Camera definition
-        self.mirror_files = {'Al-Ideal':'m1_ProtAl_Ideal.dat','Al-Aged':'m1_ProtAl_Aged.dat',
-                       'Al-Ag':'protected_Al-Ag.csv'}
+        self.mirror_file = 'mirror_coatings.csv'
         # self.f_lsst = f_lsst
         # self.pixel_size = pixel_size
         self.filters = {'u':[324,395.0],'g':[405,552,],'r':[552,691] ,'i':[691,818],
@@ -83,9 +82,10 @@ class RubinCalibETC(object):
         #multiply LED outputs by the dichroics
         self.led_flux = {}
         for filter_name, leds in self.LEDS.items():
-            if filter_name in ['u', 'y4']:
+            if filter_name in ['u','y4']:
+                single_dich = {'u':0,'y4':1}
                 led = leds[0]
-                g = interpolate.interp1d(led_df['{}_wave'.format(led)], led_df['{}_flux'.format(led)], 
+                g = interpolate.interp1d(led_df['{}_wave'.format(led)], led_df['{}_flux'.format(led)]*dichroic_data[filter_name][single_dich[filter_name]](led_df['{}_wave'.format(led)]),
                                          fill_value='extrapolate')
                 self.led_flux[filter_name] = g(self.rubin_wavelength)/1000. #mW to W
             else:
@@ -161,17 +161,18 @@ class RubinCalibETC(object):
     #     r_filter_660 = float(r_filter[r_filter.wave == 660.]['transmission'])
     #     filterless_tput = total_tput/r_filter_660
         self.get_screen_reflectance()
+        self.get_reflector_reflectance()
         self.get_projector_optics_throughput()
 
         self.total_flatfield_optics_tput = {}
-        for filter_name in self.filters.keys():
+        for filter_name in self.filters.keys(): 
             self.total_flatfield_optics_tput[filter_name] = 1
-            self.total_flatfield_optics_tput[filter_name] *= self.projector_mask_efficiency #Coupling from fiber to output of projector
-            self.total_flatfield_optics_tput[filter_name] *= self.projector_optics_throughput[filter_name]
+            #self.total_flatfield_optics_tput[filter_name] *= self.projector_mask_efficiency #Coupling from fiber to output of projector
+            self.total_flatfield_optics_tput[filter_name] *= self.projector_optics_throughput[filter_name] #Reflective and transmissive properties of optical elements in system (except dichroic which is accounted for in the initial output)
             self.total_flatfield_optics_tput[filter_name] *= self.system_efficiency #Coupling between projector and reflector
             self.total_flatfield_optics_tput[filter_name] *= self.reflector_reflectance #Reflective properties of aluminum. This changes over the surface, so this is an average value
             self.total_flatfield_optics_tput[filter_name] *= self.screen_reflectance #Reflective properties of LabSphere
-            self.total_flatfield_optics_tput[filter_name] *= self.telescope_acceptance_ratio #Reflective properties of LabSphere
+            #self.total_flatfield_optics_tput[filter_name] *= self.telescope_acceptance_ratio 
 
     def get_projector_optics_throughput(self):
 
@@ -182,20 +183,33 @@ class RubinCalibETC(object):
                 if item == 'collimator':
                     if self.light_source == 'LED':
                         coating = self.coating_type[filter_name]
-                        df = pd.read_csv(os.path.join(TPUT_DIR, f'{coating}_Broadband_AR-Coating.csv'), skiprows=2,usecols=[0,1],names=['Wavelength','Reflectance'])
-                        f = scipy.interpolate.interp1d(df.Wavelength, 1 - df.Reflectance/100., bounds_error=False, fill_value='extrapolate')
+                        df = pd.read_csv(os.path.join(TPUT_DIR, f'{coating}_Broadband_AR-Coating.csv'), 
+                                        skiprows=2,usecols=[0,1],names=['Wavelength','Reflectance'])
+                        f = scipy.interpolate.interp1d(df.Wavelength, 1 - df.Reflectance/100., 
+                                                        bounds_error=False, fill_value='extrapolate')
                     elif self.light_source == 'laser':
-                        df = pd.read_csv(os.path.join(TPUT_DIR, 'Uncoated_B270_Transmission.csv'), skiprows=2,usecols=[0,1],names=['Wavelength','Transmission'])
-                        f = scipy.interpolate.interp1d(df.Wavelength, df.Transmission/100., bounds_error=False, fill_value='extrapolate')
+                        df = pd.read_csv(os.path.join(TPUT_DIR, 'Uncoated_B270_Transmission.csv'), 
+                                        skiprows=2,usecols=[0,1],names=['Wavelength','Transmission'])
+                        f = scipy.interpolate.interp1d(df.Wavelength, df.Transmission/100., 
+                                                        bounds_error=False, fill_value='extrapolate')
                     total_tput[filter_name].append(f(self.rubin_wavelength))
 
                 elif 'converging_' in item:
                     if item == 'converging_ab':
-                        df = pd.read_csv(os.path.join(TPUT_DIR, 'AB_Broadband_AR-Coating.csv'), skiprows=2,usecols=[0,1],names=['Wavelength','Reflectance'])
-                        f = scipy.interpolate.interp1d(df.Wavelength, 1 - df.Reflectance/100., bounds_error=False, fill_value='extrapolate')
-                    elif item == 'converging_uncoated':
-                        df = pd.read_csv(os.path.join(TPUT_DIR, 'Uncoated_N-BK7_Transmission.csv'), skiprows=2,usecols=[0,1],names=['Wavelength','Transmission'])
-                        f = scipy.interpolate.interp1d(df.Wavelength, df.Transmission/100., bounds_error=False, fill_value='extrapolate')
+                        df = pd.read_csv(os.path.join(TPUT_DIR, 'AB_Broadband_AR-Coating.csv'), 
+                            skiprows=2,usecols=[0,1],names=['Wavelength','Reflectance'])
+                        f = scipy.interpolate.interp1d(df.Wavelength, 1 - df.Reflectance/100.,
+                         bounds_error=False, fill_value='extrapolate')
+                    elif item == 'converging_bk7':
+                        df = pd.read_csv(os.path.join(TPUT_DIR, 'Uncoated_N-BK7_Transmission.csv'), 
+                            skiprows=2,usecols=[0,1],names=['Wavelength','Transmission'])
+                        f = scipy.interpolate.interp1d(df.Wavelength, df.Transmission/100., 
+                            bounds_error=False, fill_value='extrapolate')
+                    elif item == 'converging_uvfs':
+                        df = pd.read_csv(os.path.join(TPUT_DIR, 'Uncoated_UVFS_Transmission.csv'), 
+                            skiprows=1,usecols=[0,1],names=['Wavelength','Transmission'])
+                        f = scipy.interpolate.interp1d(df.Wavelength, df.Transmission/100., 
+                            bounds_error=False, fill_value='extrapolate')
                     total_tput[filter_name].append(f(self.rubin_wavelength))
 
                 elif 'mirror' in item:
@@ -222,14 +236,17 @@ class RubinCalibETC(object):
             self.projector_optics_throughput[filter_name] = np.product(total_tput[filter_name], axis=0)
         
 
-
+    def get_reflector_reflectance(self):
+        df = pd.read_csv(os.path.join(TPUT_DIR, self.reflector_reflectance_file))
+        f = scipy.interpolate.interp1d(df.Wavelength, df.Reflectance, bounds_error=False, fill_value = 'extrapolate')
+        self.reflector_reflectance =  f(self.rubin_wavelength)
 
 
     def get_screen_reflectance(self):
         """
         Screen reflectance. From measured values from LabSphere on Docushare. 
         https://docushare.lsst.org/docushare/dsweb/View/Collection-10467
-        Took random file from outer ring measurement REPORT NUMBER:109153-1-10 and inner ring REPORT NUMBER:109153-1-22. Take mean of them
+        Took random file from outer ring measurement REPORT NUMBER:109153-1-17 and inner ring REPORT NUMBER:109153-1-22. Take mean of them
         """
         dfs = [pd.read_csv(os.path.join(TPUT_DIR, filen)) for filen in self.screen_reflectance_files]
 
@@ -296,23 +313,19 @@ class RubinCalibETC(object):
 
     def get_telescope_reflectance(self):
         """
-        options: Al-Ideal, Al-Aged, Al-Ag
-        Note, the files for each mirror are identical
-        projected Al-Ag https://docushare.lsst.org/docushare/dsweb/View/Collection-1047
-        All Al reflectances come from https://docushare.lsst.org/docushare/dsweb/View/Collection-1777
+        options: Unprotected-Al, Protected-Al, Protected-Ag
+        Was given the file from measurements of witness samples from Tomislav Vicuna on Slack on May 23, 2023
         """
         total_reflectance = []
+        df = pd.read_csv(os.path.join(TPUT_DIR, self.mirror_file),
+                        skiprows=1,names=['Wavelength','Unprotected-Al','Protected-Al','Protected-Ag'])
+                
+        
         for mirror in [self.m1, self.m2, self.m3]:
-            if mirror == 'Al-Ag':
-                df = pd.read_csv(os.path.join(TPUT_DIR, self.mirror_files[mirror]))
-                df['Reflectance'] = df.Reflectance/100.
-                
-            else:
-                df = pd.read_csv(os.path.join(TPUT_DIR, self.mirror_files[mirror]),
-                                delim_whitespace=True, skiprows=2,names=['Wavelength','Reflectance'])
-                
-            mirror_tput = scipy.interpolate.interp1d(df.Wavelength, df.Reflectance, 
+            reflectance = df[mirror]/100.
+            mirror_tput = scipy.interpolate.interp1d(df.Wavelength, reflectance, 
                                                     bounds_error=False, fill_value='extrapolate')
+                
             refl = mirror_tput(self.rubin_wavelength)
             total_reflectance.append(refl)
             
@@ -349,14 +362,24 @@ class RubinCalibETC(object):
         
         det_eff = scipy.interpolate.interp1d(det_tput['Wavelength'], det_tput['Throughput'],bounds_error=False, fill_value='extrapolate')
         self.detector_efficiency = det_eff(self.rubin_wavelength)
+        
+    def get_corrector_throughput(self):
+        tput = []
+        for filen in self.corrector_lenses:
+            df = pd.read_csv(os.path.join(TPUT_DIR,filen),skiprows=2,delim_whitespace=True,
+                            names=['Wavelength', 'Transmission'])
+            f = scipy.interpolate.interp1d(df.Wavelength, df.Transmission, bounds_error=False, fill_value='extrapolate')
+            tput.append(f(self.rubin_wavelength))
+        self.corrector_thoughtput = np.product(tput, axis=0)
 
     def get_telescope_camera_tput(self):
         self.get_telescope_reflectance()
         self.get_filter_response()
+        self.get_corrector_throughput()
         self.get_detector_efficiency()
         self.tel_cam_system_tput = {}
         for filter_name in self.filters.keys():
-            self.tel_cam_system_tput[filter_name] = self.telescope_reflectance * self.filter_transmission[filter_name] * self.detector_efficiency
+            self.tel_cam_system_tput[filter_name] = self.telescope_reflectance * self.filter_transmission[filter_name] * self.detector_efficiency * self.corrector_thoughtput
     
     def add_overheads(self, exptime):
         final_exptime = 0
@@ -365,7 +388,7 @@ class RubinCalibETC(object):
             num_exposures = 1
         else:
             num_exposures = np.ceil(exptime/self.min_exptime)
-            final_exptime = num_exposures * self.min_exptime
+            final_exptime = exptime
         
         readout_time = 0
         for readout in [self.cam_readout, self.electrometer_readout, self.spectrograph_readout]:
@@ -373,7 +396,7 @@ class RubinCalibETC(object):
                 if readout > readout_time:
                     readout_time = readout
 
-        final_exptime += readout_time*num_exposures
+        final_exptime += readout_time
         return final_exptime
 
     def get_photons_per_pixel(self):

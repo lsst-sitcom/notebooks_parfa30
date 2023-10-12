@@ -1,0 +1,25 @@
+light_source: 'laser'
+calib_type: 'Flatfield'
+snr: 100
+laser_power_file: 'PGD151_NT242.txt'  #should measure actual output
+laser_decrease_expected: 0 #put something in for this 
+use_fiber: True  
+fiber_length: 15  
+fiber_coupling: 0.8 #As measured Apr 11, 2023
+fiber_type: 'WFNS' 
+f_lsst: 10.3  
+pixel_size: .000010 
+m1: 'Protected-Ag'
+m2: 'Protected-Ag'
+m3: 'Protected-Ag'
+detector_file: 'detector_e2vPrototype.dat'
+corrector_lenses: ['lens1.dat','lens2.dat','lens3.dat']
+total_number_of_pixels: 3200000000
+cam_readout: 2  #Double check this
+min_exptime: 13
+electrometer_readout: 0 #How to deal with this? This will matter for CBP measurements for sure
+spectrograph_readout: 0
+projector_design: ['converging_uvfs','converging_uvfs','converging_bk7','converging_bk7']
+system_efficiency: 0.000057377  #from zemax
+reflector_reflectance_file: 'scaled_reflector_reflectance.csv' #0.804
+
