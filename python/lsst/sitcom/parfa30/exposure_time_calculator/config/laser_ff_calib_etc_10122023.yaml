@@ -4,8 +4,8 @@ snr: 100
 laser_power_file: 'PGD151_NT242.txt'  #should measure actual output
 laser_decrease_expected: 0 #put something in for this 
 use_fiber: True  
-fiber_length: 15  
-fiber_coupling: 0.8 #As measured Apr 11, 2023
+fiber_length: 15
+fiber_coupling: 0.8 #0.8 #As measured Apr 11, 2023
 fiber_type: 'WFNS' 
 f_lsst: 10.3  
 pixel_size: .000010 

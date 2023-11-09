@@ -265,16 +265,17 @@ class RubinCalibETC(object):
         # rho is the mean reflectance of spectralon
         
         sphere_radius = (self.sphere_diameter/2)*0.0254 #m
-        sphere_area = 4.0 * np.pi * (sphere_radius**2) # m
+        self.sphere_area = 4.0 * np.pi * (sphere_radius**2) # m
         
-        port_area = 0
+        self.port_area = 0
         for port_diameter in self.port_diameters:
             port_radius = (port_diameter/2.) * 0.0254 #m
-            port_area += np.pi * port_radius**2
+            self.port_area += np.pi * port_radius**2
             
-        f = port_area/sphere_area #port fraction
+        f = self.port_area/self.sphere_area #port fraction
+        self.f = f
 
-        self.Ls = (1 / (np.pi * sphere_area)) * (self.sphere_reflectance/(1-self.sphere_reflectance*(1-f))) # eq 12 - photons/m2, expecting this to be multiplied by the irradiance
+        self.Ls = (1 / (np.pi * self.sphere_area)) * (self.sphere_reflectance/(1-self.sphere_reflectance*(1-self.f))) # eq 12 - 1/m2/sr, expecting this to be multiplied by the irradiance
         
     def get_mask_efficiency(self):
         """
@@ -293,6 +294,10 @@ class RubinCalibETC(object):
 
         area_of_mask = np.pi * pinhole_radius**2
         self.mask_efficiency = area_of_mask * SA #eqn 22
+
+        self.mag = self.f_lsst/self.f_cbp    
+        spot_diam_pixels = (self.pinhole_size * self.mag) / self.pixel_size
+        self.spot_total_pixels = np.pi * (spot_diam_pixels/2.)**2
         
     def get_cbp_efficiency(self):
         """
@@ -300,10 +305,6 @@ class RubinCalibETC(object):
         """
         light_gathering_power = np.pi / (2*self.f_num_cbp)**2
         self.cbp_efficiency = light_gathering_power * self.cbp_transmission
-
-        self.mag = self.f_lsst/self.f_cbp    
-        spot_diam_pixels = (self.pinhole_size * self.mag) / self.pixel_size
-        self.spot_total_pixels = np.pi * (spot_diam_pixels/2.)**2
 
     def get_cbp_throughput(self):
         self.get_integrating_sphere_output()
@@ -411,7 +412,7 @@ class RubinCalibETC(object):
                     photons_on_telescope = self.get_photon_rate(watts_from_lightsource[filter_name] * self.cbp_system_throughput, self.rubin_wavelength)
             for filter_name in self.filters.keys():        
                 photons_detected = photons_on_telescope * self.tel_cam_system_tput[filter_name]
-                self.photons_per_pixel[filter_name] = photons_detected / self.total_number_of_pixels
+                self.photons_per_pixel[filter_name] = photons_detected / self.spot_total_pixels
         
         elif self.calib_type == 'Flatfield':
             self.get_calibration_system_optics_tput()
@@ -443,7 +444,7 @@ class RubinCalibETC(object):
                 exptimes[filter_name] = []
                 for wave in np.linspace(int(wave_start), int(wave_end), (int(wave_end)-int(wave_start)) + 1):
                     exp_time = self.get_exptime(spot_flux_interp(wave), self.snr)
-                    exptimes[filter_name].append((wave, self.add_overheads(exp_time)))
+                    exptimes[filter_name].append((wave, exp_time, self.add_overheads(exp_time)))
             
 
         if self.calib_type == 'Flatfield':
@@ -459,7 +460,7 @@ class RubinCalibETC(object):
                         photon_flux_interp = scipy.interpolate.interp1d(self.rubin_wavelength, self.photons_per_pixel[filter_name])
                         for wave in np.linspace(int(wave_start), int(wave_end), (int(wave_end)-int(wave_start)) + 1):
                             exp_time = self.get_exptime(photon_flux_interp(wave), self.snr)
-                            exptimes[filter_name].append((wave, self.add_overheads(exp_time)))
+                            exptimes[filter_name].append((wave, exp_time, self.add_overheads(exp_time)))
         
         self.total_exptimes = {}
         for filter_name in self.filters.keys():
@@ -493,14 +494,17 @@ class RubinCalibETC(object):
         plt.ylabel('Transmission')
         plt.title('Projector Transmission')
 
-
-    def plot_exptime(self):
+    def plot_exptime(self, with_overheads=False):
         exptimes = self.get_total_exptime()
         plt.figure(figsize=(6,3))
         if self.light_source == 'laser':
             for filter_name, exptime_data in exptimes.items():
                 exptime_data = np.array(exptime_data)
-                plt.plot(exptime_data[:,0], exptime_data[:,1], label=f'{filter_name}: {np.sum(exptime_data[:,1])/60.:.2f} min.')
+                if with_overheads:
+                    exptime_data = add_overheads(exptime_data)
+                    plt.plot(exptime_data[:,0], exptime_data[:,2], label=f'{filter_name}: {np.sum(exptime_data[:,1])/60.:.2f} min.')
+                else:
+                    plt.plot(exptime_data[:,0], exptime_data[:,1], label=f'{filter_name}')
             plt.xlabel('Wavelength (nm)')
         if self.calib_type == 'CBP':
             plt.ylabel('Exptime per spot [s]')
@@ -528,8 +532,6 @@ class RubinCalibETC(object):
         plt.legend()
         plt.xlabel('Wavlength (nm)')
         plt.title(f'Photon Rate from {self.light_source} for {self.calib_type}')
-
-
 
     def plot_lightsource_output(self, fiber_plot=False):
         self.get_flux()   
@@ -569,7 +571,6 @@ class RubinCalibETC(object):
         plt.plot(self.rubin_wavelength, self.cbp_system_throughput * light_flux)
         plt.ylabel('CBP Output Irradiance [W/m2]')
         plt.xlabel('Wavelength (nm)')
-
 
     def plot_telescope_and_camera(self, telescope=True, filters=True, detector=True):      
         if telescope:
